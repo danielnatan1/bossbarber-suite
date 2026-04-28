@@ -5,16 +5,48 @@ import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Scissors, LogOut, Plus, Pencil, Trash2, DollarSign, Users, Calendar as CalIcon, Copy, ExternalLink } from "lucide-react";
+import { Scissors, LogOut, Plus, Pencil, Trash2, DollarSign, Users, Calendar as CalIcon, Copy, ExternalLink, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
-type Barber = { id: string; shop_name: string; slug: string };
+type Barber = {
+  id: string;
+  shop_name: string;
+  slug: string;
+  work_days: number[];
+  work_start: string;
+  work_end: string;
+};
 type Service = { id: string; name: string; price: number; duration_minutes: number };
 type Appt = { id: string; client_name: string; client_phone: string; scheduled_at: string; price: number; status: string; service_id: string | null };
+
+const STATUS_OPTIONS = [
+  { value: "pending", label: "Pendente" },
+  { value: "confirmed", label: "Confirmado" },
+  { value: "completed", label: "Concluído" },
+  { value: "no_show", label: "Não compareceu" },
+  { value: "cancelled", label: "Cancelado" },
+];
+
+const statusStyle = (s: string) => {
+  switch (s) {
+    case "completed": return "border-emerald-500/50 bg-emerald-500/5";
+    case "no_show": return "border-red-500/50 bg-red-500/5";
+    case "confirmed": return "border-gold/60 bg-primary/5";
+    case "cancelled": return "border-muted/40 bg-muted/5 opacity-60";
+    default: return "border-border bg-card";
+  }
+};
+
+const WEEK_DAYS = [
+  { v: 0, l: "Dom" }, { v: 1, l: "Seg" }, { v: 2, l: "Ter" },
+  { v: 3, l: "Qua" }, { v: 4, l: "Qui" }, { v: 5, l: "Sex" }, { v: 6, l: "Sáb" },
+];
 
 const Dashboard = () => {
   const { user, loading, signOut } = useAuth();
@@ -25,11 +57,26 @@ const Dashboard = () => {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ name: "", price: "", duration_minutes: "30" });
 
+  // Schedule config form
+  const [schedForm, setSchedForm] = useState({ work_days: [1,2,3,4,5,6] as number[], work_start: "09:00", work_end: "19:00" });
+  const [savingSched, setSavingSched] = useState(false);
+
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const { data: b } = await supabase.from("barbers").select("id,shop_name,slug").eq("user_id", user.id).maybeSingle();
-      if (b) setBarber(b);
+      const { data: b } = await supabase
+        .from("barbers")
+        .select("id,shop_name,slug,work_days,work_start,work_end")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (b) {
+        setBarber(b as Barber);
+        setSchedForm({
+          work_days: b.work_days || [1,2,3,4,5,6],
+          work_start: (b.work_start || "09:00:00").slice(0,5),
+          work_end: (b.work_end || "19:00:00").slice(0,5),
+        });
+      }
     })();
   }, [user]);
 
@@ -58,8 +105,8 @@ const Dashboard = () => {
 
   const today = new Date(); today.setHours(0,0,0,0);
   const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate()+1);
-  const todayAppts = appts.filter(a => { const d = new Date(a.scheduled_at); return d >= today && d < tomorrow && a.status !== "cancelled"; });
-  const revenue = todayAppts.reduce((s, a) => s + Number(a.price), 0);
+  const todayAppts = appts.filter(a => { const d = new Date(a.scheduled_at); return d >= today && d < tomorrow && !["cancelled","no_show"].includes(a.status); });
+  const revenue = todayAppts.filter(a => a.status === "completed").reduce((s, a) => s + Number(a.price), 0);
   const uniqueClients = new Set(todayAppts.map(a => a.client_phone)).size;
 
   const openNew = () => { setEditing(null); setForm({ name: "", price: "", duration_minutes: "30" }); setOpen(true); };
@@ -86,6 +133,36 @@ const Dashboard = () => {
     toast.success("Serviço excluído");
   };
 
+  const updateStatus = async (id: string, status: string) => {
+    const prev = appts;
+    setAppts(appts.map(a => a.id === id ? { ...a, status } : a));
+    const { error } = await supabase.from("appointments").update({ status }).eq("id", id);
+    if (error) { setAppts(prev); toast.error(error.message); return; }
+    toast.success("Status atualizado");
+  };
+
+  const toggleDay = (d: number) => {
+    setSchedForm(f => ({
+      ...f,
+      work_days: f.work_days.includes(d) ? f.work_days.filter(x => x !== d) : [...f.work_days, d].sort(),
+    }));
+  };
+
+  const saveSchedule = async () => {
+    if (!barber) return;
+    if (schedForm.work_start >= schedForm.work_end) return toast.error("Horário inicial deve ser menor que o final");
+    if (schedForm.work_days.length === 0) return toast.error("Selecione pelo menos um dia");
+    setSavingSched(true);
+    const { error } = await supabase
+      .from("barbers")
+      .update({ work_days: schedForm.work_days, work_start: schedForm.work_start, work_end: schedForm.work_end })
+      .eq("id", barber.id);
+    setSavingSched(false);
+    if (error) return toast.error(error.message);
+    setBarber({ ...barber, ...schedForm });
+    toast.success("Agenda atualizada");
+  };
+
   const bookingUrl = barber ? `${window.location.origin}/agendar/${barber.slug}` : "";
   const copyLink = () => { navigator.clipboard.writeText(bookingUrl); toast.success("Link copiado!"); };
 
@@ -107,7 +184,6 @@ const Dashboard = () => {
           <h1 className="font-display text-4xl">{barber?.shop_name || "Sua Barbearia"}</h1>
         </div>
 
-        {/* Booking link card */}
         {barber && (
           <div className="p-5 rounded-2xl border border-gold bg-primary/5 flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
             <div className="min-w-0">
@@ -121,10 +197,9 @@ const Dashboard = () => {
           </div>
         )}
 
-        {/* Stats */}
         <div className="grid sm:grid-cols-3 gap-4">
           {[
-            { icon: DollarSign, label: "Faturamento hoje", value: `R$ ${revenue.toFixed(2)}` },
+            { icon: DollarSign, label: "Faturamento hoje (concluídos)", value: `R$ ${revenue.toFixed(2)}` },
             { icon: CalIcon, label: "Cortes hoje", value: todayAppts.length },
             { icon: Users, label: "Clientes únicos", value: uniqueClients },
           ].map((s, i) => (
@@ -142,22 +217,44 @@ const Dashboard = () => {
           <TabsList>
             <TabsTrigger value="agenda">Agenda</TabsTrigger>
             <TabsTrigger value="services">Serviços</TabsTrigger>
+            <TabsTrigger value="schedule"><Clock className="h-4 w-4" /> Configurações</TabsTrigger>
           </TabsList>
 
           <TabsContent value="agenda" className="mt-6">
-            <div className="rounded-2xl border border-border bg-card divide-y divide-border">
-              {appts.length === 0 && <p className="p-8 text-center text-muted-foreground">Nenhum agendamento ainda. Compartilhe seu link!</p>}
+            <div className="space-y-3">
+              {appts.length === 0 && (
+                <div className="rounded-2xl border border-border bg-card p-8 text-center text-muted-foreground">
+                  Nenhum agendamento ainda. Compartilhe seu link!
+                </div>
+              )}
               {appts.map(a => {
                 const svc = services.find(s => s.id === a.service_id);
                 return (
-                  <div key={a.id} className="p-5 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-                    <div className="flex-1">
-                      <p className="font-medium">{a.client_name}</p>
-                      <p className="text-sm text-muted-foreground">{a.client_phone} {svc && <>· {svc.name}</>}</p>
-                    </div>
-                    <div className="text-left sm:text-right">
-                      <p className="font-display text-lg text-gold">{format(new Date(a.scheduled_at), "dd 'de' MMM · HH:mm", { locale: ptBR })}</p>
-                      <p className="text-sm text-muted-foreground">R$ {Number(a.price).toFixed(2)}</p>
+                  <div key={a.id} className={cn("rounded-2xl border p-5 transition-colors", statusStyle(a.status))}>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-medium">{a.client_name}</p>
+                          {a.status === "pending" && (
+                            <span className="text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full border border-yellow-500/50 text-yellow-500">
+                              Aguardando WhatsApp
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">{a.client_phone} {svc && <>· {svc.name}</>}</p>
+                      </div>
+                      <div className="text-left sm:text-right">
+                        <p className="font-display text-lg text-gold">{format(new Date(a.scheduled_at), "dd 'de' MMM · HH:mm", { locale: ptBR })}</p>
+                        <p className="text-sm text-muted-foreground">R$ {Number(a.price).toFixed(2)}</p>
+                      </div>
+                      <Select value={a.status} onValueChange={(v) => updateStatus(a.id, v)}>
+                        <SelectTrigger className="w-full sm:w-44"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {STATUS_OPTIONS.map(o => (
+                            <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                 );
@@ -184,6 +281,53 @@ const Dashboard = () => {
                   <p className="text-sm text-muted-foreground mt-1">{s.duration_minutes} min</p>
                 </div>
               ))}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="schedule" className="mt-6">
+            <div className="max-w-2xl rounded-2xl border border-border bg-card p-6 space-y-6">
+              <div>
+                <p className="text-xs uppercase tracking-widest text-gold mb-1">Configurações de agenda</p>
+                <h2 className="font-display text-2xl">Quando você atende?</h2>
+                <p className="text-sm text-muted-foreground mt-1">Os clientes só poderão agendar dentro destes horários.</p>
+              </div>
+
+              <div>
+                <Label className="mb-3 block">Dias da semana</Label>
+                <div className="grid grid-cols-7 gap-2">
+                  {WEEK_DAYS.map(d => {
+                    const active = schedForm.work_days.includes(d.v);
+                    return (
+                      <button
+                        key={d.v}
+                        type="button"
+                        onClick={() => toggleDay(d.v)}
+                        className={cn(
+                          "py-3 rounded-lg border text-sm font-medium transition-all",
+                          active ? "border-gold bg-primary/10 text-gold" : "border-border text-muted-foreground hover:border-gold/50"
+                        )}
+                      >
+                        {d.l}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Início</Label>
+                  <Input type="time" value={schedForm.work_start} onChange={e => setSchedForm({ ...schedForm, work_start: e.target.value })} />
+                </div>
+                <div>
+                  <Label>Fim</Label>
+                  <Input type="time" value={schedForm.work_end} onChange={e => setSchedForm({ ...schedForm, work_end: e.target.value })} />
+                </div>
+              </div>
+
+              <Button variant="gold" size="lg" onClick={saveSchedule} disabled={savingSched}>
+                {savingSched ? "Salvando..." : "Salvar agenda"}
+              </Button>
             </div>
           </TabsContent>
         </Tabs>
