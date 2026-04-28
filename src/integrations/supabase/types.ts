@@ -14,13 +14,139 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      appointments: {
+        Row: {
+          barber_id: string
+          client_name: string
+          client_phone: string
+          created_at: string
+          duration_minutes: number
+          id: string
+          price: number
+          scheduled_at: string
+          service_id: string | null
+          status: string
+        }
+        Insert: {
+          barber_id: string
+          client_name: string
+          client_phone: string
+          created_at?: string
+          duration_minutes?: number
+          id?: string
+          price?: number
+          scheduled_at: string
+          service_id?: string | null
+          status?: string
+        }
+        Update: {
+          barber_id?: string
+          client_name?: string
+          client_phone?: string
+          created_at?: string
+          duration_minutes?: number
+          id?: string
+          price?: number
+          scheduled_at?: string
+          service_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointments_barber_id_fkey"
+            columns: ["barber_id"]
+            isOneToOne: false
+            referencedRelation: "barbers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      barbers: {
+        Row: {
+          created_at: string
+          id: string
+          phone: string | null
+          shop_name: string
+          slug: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          phone?: string | null
+          shop_name: string
+          slug: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          phone?: string | null
+          shop_name?: string
+          slug?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      services: {
+        Row: {
+          barber_id: string
+          created_at: string
+          duration_minutes: number
+          id: string
+          name: string
+          price: number
+        }
+        Insert: {
+          barber_id: string
+          created_at?: string
+          duration_minutes?: number
+          id?: string
+          name: string
+          price?: number
+        }
+        Update: {
+          barber_id?: string
+          created_at?: string
+          duration_minutes?: number
+          id?: string
+          name?: string
+          price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "services_barber_id_fkey"
+            columns: ["barber_id"]
+            isOneToOne: false
+            referencedRelation: "barbers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_taken_slots: {
+        Args: { _barber_id: string; _day: string }
+        Returns: {
+          duration_minutes: number
+          scheduled_at: string
+        }[]
+      }
+      slugify: { Args: { value: string }; Returns: string }
+      unaccent_safe: { Args: { value: string }; Returns: string }
     }
     Enums: {
       [_ in never]: never
