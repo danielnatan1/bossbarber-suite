@@ -77,6 +77,9 @@ export type Database = {
           slug: string
           updated_at: string
           user_id: string
+          work_days: number[]
+          work_end: string
+          work_start: string
         }
         Insert: {
           created_at?: string
@@ -86,6 +89,9 @@ export type Database = {
           slug: string
           updated_at?: string
           user_id: string
+          work_days?: number[]
+          work_end?: string
+          work_start?: string
         }
         Update: {
           created_at?: string
@@ -95,6 +101,9 @@ export type Database = {
           slug?: string
           updated_at?: string
           user_id?: string
+          work_days?: number[]
+          work_end?: string
+          work_start?: string
         }
         Relationships: []
       }
