@@ -135,10 +135,19 @@ const Booking = () => {
 
   const finalizeWhatsApp = async () => {
     if (!pendingApptId || !barber || !service || !date || !time) return;
-    if (!barber.phone || barber.phone.replace(/\D/g, "").length < 10) {
+
+    // Resolve target number: prefer whatsapp_number, fallback to phone
+    const rawTarget = barber.whatsapp_number || barber.phone || "";
+    let target = rawTarget.replace(/\D/g, ""); // remove espaços, ( ), -, etc.
+    if (target.startsWith("0")) target = target.replace(/^0+/, "");
+    // Auto-prepend Brazil country code if missing (10 = fixo, 11 = celular)
+    if (target.length > 0 && target.length <= 11) target = `55${target}`;
+
+    if (target.length < 12) {
       toast.error("Esta barbearia ainda não cadastrou um WhatsApp para receber confirmações.");
       return;
     }
+
     const { error } = await supabase
       .from("appointments")
       .update({ status: "confirmed" })
@@ -153,11 +162,6 @@ const Booking = () => {
       `Nome: ${name}\n` +
       `WhatsApp: ${phone}\n` +
       `Valor: R$ ${Number(service.price).toFixed(2)}`;
-
-    // Sanitiza: apenas dígitos, e garante código do país (Brasil = 55) quando ausente
-    let target = barber.phone.replace(/\D/g, "");
-    if (target.startsWith("0")) target = target.replace(/^0+/, "");
-    if (target.length <= 11) target = `55${target}`;
 
     const url = `https://wa.me/${target}?text=${encodeURIComponent(msg)}`;
     window.open(url, "_blank", "noopener,noreferrer");
