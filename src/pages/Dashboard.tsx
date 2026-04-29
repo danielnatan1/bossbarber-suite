@@ -181,12 +181,19 @@ const Dashboard = () => {
   const saveProfile = async () => {
     if (!barber) return;
     const digits = waPhone.replace(/\D/g, "");
-    if (digits.length < 10) return toast.error("Informe DDD + número (ex: 11999999999)");
+    if (digits.length < 10) return toast.error("Informe DDD + número (ex: 5511999999999)");
+    if (digits.length > 15) return toast.error("Número muito longo");
+    // Auto-prepend Brazil country code if missing
+    const normalized = digits.length <= 11 ? `55${digits}` : digits;
     setSavingProfile(true);
-    const { error } = await supabase.from("barbers").update({ phone: waPhone.trim() }).eq("id", barber.id);
+    const { error } = await supabase
+      .from("barbers")
+      .update({ whatsapp_number: normalized, phone: normalized })
+      .eq("id", barber.id);
     setSavingProfile(false);
     if (error) return toast.error(error.message);
-    setBarber({ ...barber, phone: waPhone.trim() });
+    setBarber({ ...barber, whatsapp_number: normalized, phone: normalized });
+    setWaPhone(normalized);
     toast.success("WhatsApp atualizado");
   };
 
