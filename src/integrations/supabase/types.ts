@@ -77,6 +77,7 @@ export type Database = {
           slug: string
           updated_at: string
           user_id: string
+          whatsapp_number: string | null
           work_days: number[]
           work_end: string
           work_start: string
@@ -89,6 +90,7 @@ export type Database = {
           slug: string
           updated_at?: string
           user_id: string
+          whatsapp_number?: string | null
           work_days?: number[]
           work_end?: string
           work_start?: string
@@ -101,6 +103,7 @@ export type Database = {
           slug?: string
           updated_at?: string
           user_id?: string
+          whatsapp_number?: string | null
           work_days?: number[]
           work_end?: string
           work_start?: string
