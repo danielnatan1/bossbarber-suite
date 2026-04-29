@@ -116,7 +116,9 @@ const Booking = () => {
     setSubmitting(true);
     const scheduled = new Date(date);
     scheduled.setHours(time.h, time.m, 0, 0);
-    const { data, error } = await supabase.from("appointments").insert({
+    const appointmentId = crypto.randomUUID();
+    const { error } = await supabase.from("appointments").insert({
+      id: appointmentId,
       barber_id: barber.id,
       service_id: service.id,
       client_name: name.trim(),
@@ -125,10 +127,10 @@ const Booking = () => {
       duration_minutes: service.duration_minutes,
       price: service.price,
       status: "pending",
-    }).select("id").single();
+    });
     setSubmitting(false);
-    if (error || !data) return toast.error(error?.message || "Erro ao agendar");
-    setPendingApptId(data.id);
+    if (error) return toast.error(error.message || "Erro ao agendar");
+    setPendingApptId(appointmentId);
   };
 
   const finalizeWhatsApp = async () => {
