@@ -77,12 +77,12 @@ const Dashboard = () => {
     (async () => {
       const { data: b } = await supabase
         .from("barbers")
-        .select("id,shop_name,slug,phone,work_days,work_start,work_end")
+        .select("id,shop_name,slug,phone,whatsapp_number,work_days,work_start,work_end")
         .eq("user_id", user.id)
         .maybeSingle();
       if (b) {
         setBarber(b as Barber);
-        setWaPhone(b.phone || "");
+        setWaPhone((b as Barber).whatsapp_number || b.phone || "");
         setSchedForm({
           work_days: b.work_days || [1,2,3,4,5,6],
           work_start: (b.work_start || "09:00:00").slice(0,5),
