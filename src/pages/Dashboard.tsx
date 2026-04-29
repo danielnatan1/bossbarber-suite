@@ -215,6 +215,16 @@ const Dashboard = () => {
           </div>
         )}
 
+        {barber && !barber.phone && (
+          <div className="p-4 rounded-2xl border border-yellow-500/50 bg-yellow-500/5 flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 text-yellow-500 shrink-0 mt-0.5" />
+            <div className="flex-1 text-sm">
+              <p className="font-medium text-yellow-500">Cadastre seu WhatsApp</p>
+              <p className="text-muted-foreground">Os clientes precisam do seu número para confirmar agendamentos. Vá em <span className="text-gold">Configurações</span>.</p>
+            </div>
+          </div>
+        )}
+
         <div className="grid sm:grid-cols-3 gap-4">
           {[
             { icon: DollarSign, label: "Faturamento hoje (concluídos)", value: `R$ ${revenue.toFixed(2)}` },
