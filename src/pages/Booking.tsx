@@ -12,7 +12,7 @@ import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { z } from "zod";
 
-type Barber = { id: string; shop_name: string; slug: string; phone: string | null; work_days: number[]; work_start: string; work_end: string };
+type Barber = { id: string; shop_name: string; slug: string; phone: string | null; whatsapp_number: string | null; work_days: number[]; work_start: string; work_end: string };
 type Service = { id: string; name: string; price: number; duration_minutes: number };
 
 const phoneSchema = z.string()
