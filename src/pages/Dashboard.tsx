@@ -18,6 +18,7 @@ type Barber = {
   id: string;
   shop_name: string;
   slug: string;
+  phone: string | null;
   work_days: number[];
   work_start: string;
   work_end: string;
@@ -61,16 +62,21 @@ const Dashboard = () => {
   const [schedForm, setSchedForm] = useState({ work_days: [1,2,3,4,5,6] as number[], work_start: "09:00", work_end: "19:00" });
   const [savingSched, setSavingSched] = useState(false);
 
+  // Profile (WhatsApp)
+  const [waPhone, setWaPhone] = useState("");
+  const [savingProfile, setSavingProfile] = useState(false);
+
   useEffect(() => {
     if (!user) return;
     (async () => {
       const { data: b } = await supabase
         .from("barbers")
-        .select("id,shop_name,slug,work_days,work_start,work_end")
+        .select("id,shop_name,slug,phone,work_days,work_start,work_end")
         .eq("user_id", user.id)
         .maybeSingle();
       if (b) {
         setBarber(b as Barber);
+        setWaPhone(b.phone || "");
         setSchedForm({
           work_days: b.work_days || [1,2,3,4,5,6],
           work_start: (b.work_start || "09:00:00").slice(0,5),
@@ -165,6 +171,18 @@ const Dashboard = () => {
 
   const bookingUrl = barber ? `${window.location.origin}/agendar/${barber.slug}` : "";
   const copyLink = () => { navigator.clipboard.writeText(bookingUrl); toast.success("Link copiado!"); };
+
+  const saveProfile = async () => {
+    if (!barber) return;
+    const digits = waPhone.replace(/\D/g, "");
+    if (digits.length < 10) return toast.error("Informe DDD + número (ex: 11999999999)");
+    setSavingProfile(true);
+    const { error } = await supabase.from("barbers").update({ phone: waPhone.trim() }).eq("id", barber.id);
+    setSavingProfile(false);
+    if (error) return toast.error(error.message);
+    setBarber({ ...barber, phone: waPhone.trim() });
+    toast.success("WhatsApp atualizado");
+  };
 
   return (
     <div className="min-h-screen bg-background">
