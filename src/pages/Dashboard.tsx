@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Scissors, LogOut, Plus, Pencil, Trash2, DollarSign, Users, Calendar as CalIcon, Copy, ExternalLink, Clock } from "lucide-react";
+import { Scissors, LogOut, Plus, Pencil, Trash2, DollarSign, Users, Calendar as CalIcon, Copy, ExternalLink, Clock, MessageCircle, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -302,7 +302,33 @@ const Dashboard = () => {
             </div>
           </TabsContent>
 
-          <TabsContent value="schedule" className="mt-6">
+          <TabsContent value="schedule" className="mt-6 space-y-6">
+            <div className="max-w-2xl rounded-2xl border border-border bg-card p-6 space-y-6">
+              <div>
+                <p className="text-xs uppercase tracking-widest text-gold mb-1">Perfil</p>
+                <h2 className="font-display text-2xl flex items-center gap-2"><MessageCircle className="h-6 w-6 text-gold" /> Seu WhatsApp</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Este é o número que receberá as mensagens de confirmação dos clientes.
+                </p>
+              </div>
+              <div>
+                <Label>Número (com DDD)</Label>
+                <Input
+                  type="tel"
+                  value={waPhone}
+                  onChange={e => setWaPhone(e.target.value)}
+                  placeholder="(11) 99999-9999"
+                  maxLength={20}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Será usado no link <span className="font-mono">wa.me/SEUNUMERO</span>. Use apenas números, DDD + telefone.
+                </p>
+              </div>
+              <Button variant="gold" size="lg" onClick={saveProfile} disabled={savingProfile}>
+                {savingProfile ? "Salvando..." : "Salvar WhatsApp"}
+              </Button>
+            </div>
+
             <div className="max-w-2xl rounded-2xl border border-border bg-card p-6 space-y-6">
               <div>
                 <p className="text-xs uppercase tracking-widest text-gold mb-1">Configurações de agenda</p>
