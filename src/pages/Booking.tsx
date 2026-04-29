@@ -58,7 +58,7 @@ const Booking = () => {
     (async () => {
       const { data: b } = await supabase
         .from("barbers")
-        .select("id,shop_name,slug,phone,work_days,work_start,work_end")
+        .select("id,shop_name,slug,phone,whatsapp_number,work_days,work_start,work_end")
         .eq("slug", slug)
         .maybeSingle();
       if (!b) return;
