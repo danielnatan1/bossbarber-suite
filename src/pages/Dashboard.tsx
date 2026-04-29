@@ -19,9 +19,15 @@ type Barber = {
   shop_name: string;
   slug: string;
   phone: string | null;
+  whatsapp_number: string | null;
   work_days: number[];
   work_start: string;
   work_end: string;
+};
+
+const formatWhatsappMask = (value: string) => {
+  // Keep digits only, max 15 (E.164)
+  return value.replace(/\D/g, "").slice(0, 15);
 };
 type Service = { id: string; name: string; price: number; duration_minutes: number };
 type Appt = { id: string; client_name: string; client_phone: string; scheduled_at: string; price: number; status: string; service_id: string | null };
