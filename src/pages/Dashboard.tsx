@@ -19,9 +19,15 @@ type Barber = {
   shop_name: string;
   slug: string;
   phone: string | null;
+  whatsapp_number: string | null;
   work_days: number[];
   work_start: string;
   work_end: string;
+};
+
+const formatWhatsappMask = (value: string) => {
+  // Keep digits only, max 15 (E.164)
+  return value.replace(/\D/g, "").slice(0, 15);
 };
 type Service = { id: string; name: string; price: number; duration_minutes: number };
 type Appt = { id: string; client_name: string; client_phone: string; scheduled_at: string; price: number; status: string; service_id: string | null };
@@ -71,12 +77,12 @@ const Dashboard = () => {
     (async () => {
       const { data: b } = await supabase
         .from("barbers")
-        .select("id,shop_name,slug,phone,work_days,work_start,work_end")
+        .select("id,shop_name,slug,phone,whatsapp_number,work_days,work_start,work_end")
         .eq("user_id", user.id)
         .maybeSingle();
       if (b) {
         setBarber(b as Barber);
-        setWaPhone(b.phone || "");
+        setWaPhone((b as Barber).whatsapp_number || b.phone || "");
         setSchedForm({
           work_days: b.work_days || [1,2,3,4,5,6],
           work_start: (b.work_start || "09:00:00").slice(0,5),
@@ -175,12 +181,19 @@ const Dashboard = () => {
   const saveProfile = async () => {
     if (!barber) return;
     const digits = waPhone.replace(/\D/g, "");
-    if (digits.length < 10) return toast.error("Informe DDD + número (ex: 11999999999)");
+    if (digits.length < 10) return toast.error("Informe DDD + número (ex: 5511999999999)");
+    if (digits.length > 15) return toast.error("Número muito longo");
+    // Auto-prepend Brazil country code if missing
+    const normalized = digits.length <= 11 ? `55${digits}` : digits;
     setSavingProfile(true);
-    const { error } = await supabase.from("barbers").update({ phone: waPhone.trim() }).eq("id", barber.id);
+    const { error } = await supabase
+      .from("barbers")
+      .update({ whatsapp_number: normalized, phone: normalized })
+      .eq("id", barber.id);
     setSavingProfile(false);
     if (error) return toast.error(error.message);
-    setBarber({ ...barber, phone: waPhone.trim() });
+    setBarber({ ...barber, whatsapp_number: normalized, phone: normalized });
+    setWaPhone(normalized);
     toast.success("WhatsApp atualizado");
   };
 
@@ -215,7 +228,7 @@ const Dashboard = () => {
           </div>
         )}
 
-        {barber && !barber.phone && (
+        {barber && !barber.whatsapp_number && (
           <div className="p-4 rounded-2xl border border-yellow-500/50 bg-yellow-500/5 flex items-start gap-3">
             <AlertCircle className="h-5 w-5 text-yellow-500 shrink-0 mt-0.5" />
             <div className="flex-1 text-sm">
@@ -322,16 +335,17 @@ const Dashboard = () => {
                 </p>
               </div>
               <div>
-                <Label>Número (com DDD)</Label>
+                <Label>WhatsApp de Recebimento</Label>
                 <Input
                   type="tel"
+                  inputMode="numeric"
                   value={waPhone}
-                  onChange={e => setWaPhone(e.target.value)}
-                  placeholder="(11) 99999-9999"
-                  maxLength={20}
+                  onChange={e => setWaPhone(formatWhatsappMask(e.target.value))}
+                  placeholder="5511999999999"
+                  maxLength={15}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Será usado no link <span className="font-mono">wa.me/SEUNUMERO</span>. Use apenas números, DDD + telefone.
+                  Apenas números: <span className="font-mono">[código país][DDD][número]</span>. Ex: <span className="font-mono">5511999999999</span>. Será usado no link <span className="font-mono">wa.me/</span>.
                 </p>
               </div>
               <Button variant="gold" size="lg" onClick={saveProfile} disabled={savingProfile}>
