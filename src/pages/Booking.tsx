@@ -154,9 +154,13 @@ const Booking = () => {
       `WhatsApp: ${phone}\n` +
       `Valor: R$ ${Number(service.price).toFixed(2)}`;
 
-    const target = barber.phone.replace(/\D/g, "");
+    // Sanitiza: apenas dígitos, e garante código do país (Brasil = 55) quando ausente
+    let target = barber.phone.replace(/\D/g, "");
+    if (target.startsWith("0")) target = target.replace(/^0+/, "");
+    if (target.length <= 11) target = `55${target}`;
+
     const url = `https://wa.me/${target}?text=${encodeURIComponent(msg)}`;
-    window.open(url, "_blank");
+    window.open(url, "_blank", "noopener,noreferrer");
     setConfirmed(true);
   };
 
