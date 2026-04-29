@@ -335,16 +335,17 @@ const Dashboard = () => {
                 </p>
               </div>
               <div>
-                <Label>Número (com DDD)</Label>
+                <Label>WhatsApp de Recebimento</Label>
                 <Input
                   type="tel"
+                  inputMode="numeric"
                   value={waPhone}
-                  onChange={e => setWaPhone(e.target.value)}
-                  placeholder="(11) 99999-9999"
-                  maxLength={20}
+                  onChange={e => setWaPhone(formatWhatsappMask(e.target.value))}
+                  placeholder="5511999999999"
+                  maxLength={15}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Será usado no link <span className="font-mono">wa.me/SEUNUMERO</span>. Use apenas números, DDD + telefone.
+                  Apenas números: <span className="font-mono">[código país][DDD][número]</span>. Ex: <span className="font-mono">5511999999999</span>. Será usado no link <span className="font-mono">wa.me/</span>.
                 </p>
               </div>
               <Button variant="gold" size="lg" onClick={saveProfile} disabled={savingProfile}>
