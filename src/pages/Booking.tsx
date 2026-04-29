@@ -135,6 +135,10 @@ const Booking = () => {
 
   const finalizeWhatsApp = async () => {
     if (!pendingApptId || !barber || !service || !date || !time) return;
+    if (!barber.phone || barber.phone.replace(/\D/g, "").length < 10) {
+      toast.error("Esta barbearia ainda não cadastrou um WhatsApp para receber confirmações.");
+      return;
+    }
     const { error } = await supabase
       .from("appointments")
       .update({ status: "confirmed" })
@@ -144,17 +148,14 @@ const Booking = () => {
     const dateStr = format(date, "dd/MM/yyyy");
     const timeStr = `${String(time.h).padStart(2,"0")}:${String(time.m).padStart(2,"0")}`;
     const msg =
-      `*Novo agendamento - ${barber.shop_name}*\n\n` +
-      `👤 Cliente: ${name}\n` +
-      `📞 WhatsApp: ${phone}\n` +
-      `✂️ Serviço: ${service.name}\n` +
-      `📅 Data: ${dateStr} às ${timeStr}\n` +
-      `💰 Valor: R$ ${Number(service.price).toFixed(2)}`;
+      `Olá! Gostaria de confirmar meu agendamento de *${service.name}* ` +
+      `para o dia *${dateStr}* às *${timeStr}*.\n\n` +
+      `Nome: ${name}\n` +
+      `WhatsApp: ${phone}\n` +
+      `Valor: R$ ${Number(service.price).toFixed(2)}`;
 
-    const target = (barber.phone || "").replace(/\D/g, "");
-    const url = target
-      ? `https://wa.me/${target}?text=${encodeURIComponent(msg)}`
-      : `https://wa.me/?text=${encodeURIComponent(msg)}`;
+    const target = barber.phone.replace(/\D/g, "");
+    const url = `https://wa.me/${target}?text=${encodeURIComponent(msg)}`;
     window.open(url, "_blank");
     setConfirmed(true);
   };

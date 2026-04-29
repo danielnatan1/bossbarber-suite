@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Scissors, LogOut, Plus, Pencil, Trash2, DollarSign, Users, Calendar as CalIcon, Copy, ExternalLink, Clock } from "lucide-react";
+import { Scissors, LogOut, Plus, Pencil, Trash2, DollarSign, Users, Calendar as CalIcon, Copy, ExternalLink, Clock, MessageCircle, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -18,6 +18,7 @@ type Barber = {
   id: string;
   shop_name: string;
   slug: string;
+  phone: string | null;
   work_days: number[];
   work_start: string;
   work_end: string;
@@ -61,16 +62,21 @@ const Dashboard = () => {
   const [schedForm, setSchedForm] = useState({ work_days: [1,2,3,4,5,6] as number[], work_start: "09:00", work_end: "19:00" });
   const [savingSched, setSavingSched] = useState(false);
 
+  // Profile (WhatsApp)
+  const [waPhone, setWaPhone] = useState("");
+  const [savingProfile, setSavingProfile] = useState(false);
+
   useEffect(() => {
     if (!user) return;
     (async () => {
       const { data: b } = await supabase
         .from("barbers")
-        .select("id,shop_name,slug,work_days,work_start,work_end")
+        .select("id,shop_name,slug,phone,work_days,work_start,work_end")
         .eq("user_id", user.id)
         .maybeSingle();
       if (b) {
         setBarber(b as Barber);
+        setWaPhone(b.phone || "");
         setSchedForm({
           work_days: b.work_days || [1,2,3,4,5,6],
           work_start: (b.work_start || "09:00:00").slice(0,5),
@@ -166,6 +172,18 @@ const Dashboard = () => {
   const bookingUrl = barber ? `${window.location.origin}/agendar/${barber.slug}` : "";
   const copyLink = () => { navigator.clipboard.writeText(bookingUrl); toast.success("Link copiado!"); };
 
+  const saveProfile = async () => {
+    if (!barber) return;
+    const digits = waPhone.replace(/\D/g, "");
+    if (digits.length < 10) return toast.error("Informe DDD + número (ex: 11999999999)");
+    setSavingProfile(true);
+    const { error } = await supabase.from("barbers").update({ phone: waPhone.trim() }).eq("id", barber.id);
+    setSavingProfile(false);
+    if (error) return toast.error(error.message);
+    setBarber({ ...barber, phone: waPhone.trim() });
+    toast.success("WhatsApp atualizado");
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border/50 backdrop-blur bg-background/80 sticky top-0 z-40">
@@ -193,6 +211,16 @@ const Dashboard = () => {
             <div className="flex gap-2 shrink-0">
               <Button variant="outline" size="sm" onClick={copyLink}><Copy className="h-4 w-4" /> Copiar</Button>
               <Button variant="gold" size="sm" asChild><a href={bookingUrl} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4" /> Abrir</a></Button>
+            </div>
+          </div>
+        )}
+
+        {barber && !barber.phone && (
+          <div className="p-4 rounded-2xl border border-yellow-500/50 bg-yellow-500/5 flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 text-yellow-500 shrink-0 mt-0.5" />
+            <div className="flex-1 text-sm">
+              <p className="font-medium text-yellow-500">Cadastre seu WhatsApp</p>
+              <p className="text-muted-foreground">Os clientes precisam do seu número para confirmar agendamentos. Vá em <span className="text-gold">Configurações</span>.</p>
             </div>
           </div>
         )}
@@ -284,7 +312,33 @@ const Dashboard = () => {
             </div>
           </TabsContent>
 
-          <TabsContent value="schedule" className="mt-6">
+          <TabsContent value="schedule" className="mt-6 space-y-6">
+            <div className="max-w-2xl rounded-2xl border border-border bg-card p-6 space-y-6">
+              <div>
+                <p className="text-xs uppercase tracking-widest text-gold mb-1">Perfil</p>
+                <h2 className="font-display text-2xl flex items-center gap-2"><MessageCircle className="h-6 w-6 text-gold" /> Seu WhatsApp</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Este é o número que receberá as mensagens de confirmação dos clientes.
+                </p>
+              </div>
+              <div>
+                <Label>Número (com DDD)</Label>
+                <Input
+                  type="tel"
+                  value={waPhone}
+                  onChange={e => setWaPhone(e.target.value)}
+                  placeholder="(11) 99999-9999"
+                  maxLength={20}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Será usado no link <span className="font-mono">wa.me/SEUNUMERO</span>. Use apenas números, DDD + telefone.
+                </p>
+              </div>
+              <Button variant="gold" size="lg" onClick={saveProfile} disabled={savingProfile}>
+                {savingProfile ? "Salvando..." : "Salvar WhatsApp"}
+              </Button>
+            </div>
+
             <div className="max-w-2xl rounded-2xl border border-border bg-card p-6 space-y-6">
               <div>
                 <p className="text-xs uppercase tracking-widest text-gold mb-1">Configurações de agenda</p>
