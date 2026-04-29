@@ -335,17 +335,17 @@ const Dashboard = () => {
                 </p>
               </div>
               <div>
-                <Label>WhatsApp de Recebimento</Label>
+                <Label>WhatsApp para Agendamentos</Label>
                 <Input
                   type="tel"
                   inputMode="numeric"
                   value={waPhone}
                   onChange={e => setWaPhone(formatWhatsappMask(e.target.value))}
-                  placeholder="5511999999999"
+                  placeholder="16994152450"
                   maxLength={15}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Apenas números: <span className="font-mono">[código país][DDD][número]</span>. Ex: <span className="font-mono">5511999999999</span>. Será usado no link <span className="font-mono">wa.me/</span>.
+                  Digite apenas números com DDD (ex: <span className="font-mono">16994152450</span>). O prefixo <span className="font-mono">55</span> (Brasil) é adicionado automaticamente.
                 </p>
               </div>
               <Button variant="gold" size="lg" onClick={saveProfile} disabled={savingProfile}>
