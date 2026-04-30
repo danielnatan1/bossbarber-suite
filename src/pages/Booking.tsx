@@ -52,6 +52,8 @@ const Booking = () => {
   const [submitting, setSubmitting] = useState(false);
   const [pendingApptId, setPendingApptId] = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState(false);
+  const [secondsLeft, setSecondsLeft] = useState(600);
+  const [expired, setExpired] = useState(false);
 
   useEffect(() => {
     if (!slug) return;
