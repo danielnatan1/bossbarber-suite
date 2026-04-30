@@ -285,7 +285,8 @@ const Dashboard = () => {
                     `Vi que você iniciou um agendamento de *${svc?.name || "serviço"}* para ${dateStr}. ` +
                     `Posso confirmar pra você?`;
                   const url = `https://wa.me/${target}?text=${encodeURIComponent(msg)}`;
-                  window.open(url, "_blank", "noopener,noreferrer");
+                  const win = window.open(url, "_blank");
+                  if (!win) window.location.href = url;
                 };
 
                 return (

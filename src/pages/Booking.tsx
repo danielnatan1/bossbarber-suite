@@ -153,26 +153,19 @@ const Booking = () => {
     setPendingApptId(appointmentId);
   };
 
-  const finalizeWhatsApp = async () => {
+  const finalizeWhatsApp = () => {
     if (!pendingApptId || !barber || !service || !date || !time) return;
 
     // Resolve target number: prefer whatsapp_number, fallback to phone
     const rawTarget = barber.whatsapp_number || barber.phone || "";
-    let target = rawTarget.replace(/\D/g, ""); // remove espaços, ( ), -, etc.
+    let target = rawTarget.replace(/\D/g, "");
     if (target.startsWith("0")) target = target.replace(/^0+/, "");
-    // Auto-prepend Brazil country code if missing (10 = fixo, 11 = celular)
     if (target.length > 0 && target.length <= 11) target = `55${target}`;
 
     if (target.length < 12) {
       toast.error("Esta barbearia ainda não cadastrou um WhatsApp para receber confirmações.");
       return;
     }
-
-    const { error } = await supabase
-      .from("appointments")
-      .update({ status: "confirmed" })
-      .eq("id", pendingApptId);
-    if (error) { toast.error(error.message); return; }
 
     const dateStr = format(date, "dd/MM/yyyy");
     const timeStr = `${String(time.h).padStart(2,"0")}:${String(time.m).padStart(2,"0")}`;
@@ -184,8 +177,24 @@ const Booking = () => {
       `Valor: R$ ${Number(service.price).toFixed(2)}`;
 
     const url = `https://wa.me/${target}?text=${encodeURIComponent(msg)}`;
-    window.open(url, "_blank", "noopener,noreferrer");
-    setConfirmed(true);
+
+    // CRITICAL: open IMMEDIATELY inside the click handler (no await before)
+    // to preserve the user gesture and avoid popup blockers.
+    const win = window.open(url, "_blank");
+    if (!win) {
+      // Popup blocked — navigate current tab as fallback
+      window.location.href = url;
+    }
+
+    // Fire-and-forget DB update (does not block the popup)
+    supabase
+      .from("appointments")
+      .update({ status: "confirmed" })
+      .eq("id", pendingApptId)
+      .then(({ error }) => {
+        if (error) toast.error(error.message);
+        else setConfirmed(true);
+      });
   };
 
   if (!barber) {
