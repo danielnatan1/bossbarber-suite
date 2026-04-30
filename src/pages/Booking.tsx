@@ -79,6 +79,24 @@ const Booking = () => {
     })();
   }, [barber, date]);
 
+  // Countdown 10 minutes after creating the pending appointment
+  useEffect(() => {
+    if (!pendingApptId || confirmed) return;
+    setSecondsLeft(600);
+    setExpired(false);
+    const interval = setInterval(() => {
+      setSecondsLeft(prev => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          setExpired(true);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [pendingApptId, confirmed]);
+
   const slots = useMemo(() => barber ? buildSlots(barber.work_start, barber.work_end) : [], [barber]);
 
   const isSlotTaken = (h: number, m: number) => {
