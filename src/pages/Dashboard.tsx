@@ -270,15 +270,38 @@ const Dashboard = () => {
               )}
               {appts.map(a => {
                 const svc = services.find(s => s.id === a.service_id);
+                const isPending = a.status === "pending";
+                const ageMs = Date.now() - new Date((a as any).created_at || a.scheduled_at).getTime();
+                const isExpired = isPending && ageMs > 10 * 60 * 1000;
+
+                const openClientWhatsapp = () => {
+                  let target = (a.client_phone || "").replace(/\D/g, "");
+                  if (target.startsWith("0")) target = target.replace(/^0+/, "");
+                  if (target.length > 0 && target.length <= 11) target = `55${target}`;
+                  if (target.length < 12) { toast.error("Número do cliente inválido"); return; }
+                  const dateStr = format(new Date(a.scheduled_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
+                  const msg =
+                    `Olá ${a.client_name}! Aqui é da *${barber?.shop_name}*. ` +
+                    `Vi que você iniciou um agendamento de *${svc?.name || "serviço"}* para ${dateStr}. ` +
+                    `Posso confirmar pra você?`;
+                  const url = `https://wa.me/${target}?text=${encodeURIComponent(msg)}`;
+                  window.open(url, "_blank", "noopener,noreferrer");
+                };
+
                 return (
-                  <div key={a.id} className={cn("rounded-2xl border p-5 transition-colors", statusStyle(a.status))}>
+                  <div key={a.id} className={cn("rounded-2xl border p-5 transition-colors", statusStyle(a.status), isExpired && "opacity-70")}>
                     <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="font-medium">{a.client_name}</p>
-                          {a.status === "pending" && (
+                          {isPending && !isExpired && (
                             <span className="text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full border border-yellow-500/50 text-yellow-500">
                               Aguardando WhatsApp
+                            </span>
+                          )}
+                          {isExpired && (
+                            <span className="text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full border border-red-500/50 text-red-500">
+                              Expirado (10min)
                             </span>
                           )}
                         </div>
@@ -288,6 +311,11 @@ const Dashboard = () => {
                         <p className="font-display text-lg text-gold">{format(new Date(a.scheduled_at), "dd 'de' MMM · HH:mm", { locale: ptBR })}</p>
                         <p className="text-sm text-muted-foreground">R$ {Number(a.price).toFixed(2)}</p>
                       </div>
+                      {isPending && (
+                        <Button variant="gold" size="sm" onClick={openClientWhatsapp} className="shrink-0">
+                          <MessageCircle className="h-4 w-4" /> Confirmar via Zap
+                        </Button>
+                      )}
                       <Select value={a.status} onValueChange={(v) => updateStatus(a.id, v)}>
                         <SelectTrigger className="w-full sm:w-44"><SelectValue /></SelectTrigger>
                         <SelectContent>
