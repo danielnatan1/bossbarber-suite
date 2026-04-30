@@ -214,18 +214,41 @@ const Booking = () => {
 
   // "Quase lá" screen
   if (pendingApptId) {
+    const mm = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
+    const ss = String(secondsLeft % 60).padStart(2, "0");
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <div className="max-w-md w-full p-8 rounded-2xl border border-gold bg-card text-center">
-          <div className="inline-flex p-4 rounded-full bg-yellow-500/10 border border-yellow-500/30 mb-4">
-            <AlertCircle className="h-8 w-8 text-yellow-500" />
+          <div className={cn(
+            "inline-flex p-4 rounded-full mb-4 border",
+            expired ? "bg-red-500/10 border-red-500/30" : "bg-yellow-500/10 border-yellow-500/30"
+          )}>
+            <AlertCircle className={cn("h-8 w-8", expired ? "text-red-500" : "text-yellow-500")} />
           </div>
-          <p className="text-xs uppercase tracking-widest text-gold mb-2">Quase lá!</p>
-          <h1 className="font-display text-3xl mb-3">Falta um passo</h1>
-          <p className="text-muted-foreground mb-6">
-            Para confirmar de verdade seu horário, envie a mensagem para o barbeiro pelo WhatsApp.
-            Sem isso, o agendamento <span className="text-yellow-500">não será confirmado</span>.
+          <p className="text-xs uppercase tracking-widest text-gold mb-2">
+            {expired ? "Tempo esgotado" : "Quase lá!"}
           </p>
+          <h1 className="font-display text-3xl mb-3">
+            {expired ? "Sua reserva expirou" : "Seu horário está reservado!"}
+          </h1>
+
+          {!expired ? (
+            <>
+              <p className="text-muted-foreground mb-4">
+                Seu horário está <span className="text-gold font-semibold">reservado por 10 minutos</span>.
+                Clique no botão abaixo para confirmar via WhatsApp e garantir sua vaga.
+              </p>
+              <div className="mb-6 inline-flex items-center gap-2 px-4 py-2 rounded-full border border-gold bg-primary/5">
+                <Clock className="h-4 w-4 text-gold" />
+                <span className="font-mono text-2xl text-gold">{mm}:{ss}</span>
+              </div>
+            </>
+          ) : (
+            <p className="text-muted-foreground mb-6">
+              Você não confirmou via WhatsApp em 10 minutos, então o horário foi liberado para outros clientes.
+              Por favor, faça um novo agendamento.
+            </p>
+          )}
 
           <div className="p-4 rounded-xl border border-border bg-background/50 mb-6 text-left">
             <p className="font-display text-lg">{service?.name}</p>
@@ -236,12 +259,20 @@ const Booking = () => {
             <p className="text-gold mt-1">R$ {service && Number(service.price).toFixed(2)}</p>
           </div>
 
-          <Button variant="gold" size="xl" className="w-full" onClick={finalizeWhatsApp}>
-            <MessageCircle className="h-5 w-5" /> Finalizar via WhatsApp
-          </Button>
-          <p className="text-xs text-muted-foreground mt-4">
-            Ao clicar, abriremos o WhatsApp com a mensagem pronta para o barbeiro.
-          </p>
+          {!expired ? (
+            <>
+              <Button variant="gold" size="xl" className="w-full" onClick={finalizeWhatsApp}>
+                <MessageCircle className="h-5 w-5" /> Confirmar via WhatsApp
+              </Button>
+              <p className="text-xs text-muted-foreground mt-4">
+                Ao clicar, abriremos o WhatsApp com a mensagem pronta para o barbeiro.
+              </p>
+            </>
+          ) : (
+            <Button variant="gold" size="xl" className="w-full" onClick={() => window.location.reload()}>
+              Fazer novo agendamento
+            </Button>
+          )}
         </div>
       </div>
     );
