@@ -248,16 +248,16 @@ const Dashboard = () => {
 
         <div className="grid sm:grid-cols-3 gap-4">
           {[
-            { icon: DollarSign, label: "Faturamento hoje (concluídos)", value: `R$ ${revenue.toFixed(2)}` },
-            { icon: CalIcon, label: "Cortes hoje", value: todayAppts.length },
+            { icon: DollarSign, label: `Faturamento ${dayLabel} (concluídos)`, value: `R$ ${revenue.toFixed(2)}` },
+            { icon: CalIcon, label: `Cortes ${dayLabel} (concluídos)`, value: cutsCount },
             { icon: Users, label: "Clientes únicos", value: uniqueClients },
           ].map((s, i) => (
-            <div key={i} className="p-6 rounded-2xl border border-border bg-card">
+            <div key={i} className="p-6 rounded-2xl border border-border bg-card transition-all duration-300">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs uppercase tracking-widest text-muted-foreground">{s.label}</span>
                 <s.icon className="h-4 w-4 text-gold" />
               </div>
-              <p className="font-display text-3xl text-gradient-gold">{s.value}</p>
+              <p className="font-display text-3xl text-gradient-gold transition-all duration-300">{s.value}</p>
             </div>
           ))}
         </div>
