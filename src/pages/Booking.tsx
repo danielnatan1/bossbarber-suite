@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -55,6 +55,15 @@ const Booking = () => {
   const [secondsLeft, setSecondsLeft] = useState(600);
   const [expired, setExpired] = useState(false);
 
+  const fetchTakenSlots = useCallback(async (targetDate?: Date) => {
+    if (!barber || !targetDate) return [];
+    const day = format(targetDate, "yyyy-MM-dd");
+    const { data } = await supabase.rpc("get_taken_slots", { _barber_id: barber.id, _day: day });
+    const nextTaken = data || [];
+    setTaken(nextTaken);
+    return nextTaken;
+  }, [barber]);
+
   useEffect(() => {
     if (!slug) return;
     (async () => {
@@ -73,11 +82,7 @@ const Booking = () => {
   useEffect(() => {
     if (!barber || !date) return;
     const day = format(date, "yyyy-MM-dd");
-    const fetchTaken = async () => {
-      const { data } = await supabase.rpc("get_taken_slots", { _barber_id: barber.id, _day: day });
-      setTaken(data || []);
-    };
-    fetchTaken();
+    fetchTakenSlots(date);
 
     // Realtime: any change to appointments for this barber refreshes taken slots
     const channel = supabase
@@ -85,18 +90,18 @@ const Booking = () => {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "appointments", filter: `barber_id=eq.${barber.id}` },
-        () => fetchTaken()
+        () => fetchTakenSlots(date)
       )
       .subscribe();
 
     // Safety net: refetch every 15s in case realtime is unavailable
-    const interval = setInterval(fetchTaken, 15000);
+    const interval = setInterval(() => fetchTakenSlots(date), 15000);
 
     return () => {
       supabase.removeChannel(channel);
       clearInterval(interval);
     };
-  }, [barber, date]);
+  }, [barber, date, fetchTakenSlots]);
 
   // Countdown 10 minutes after creating the pending appointment
   useEffect(() => {
@@ -118,15 +123,26 @@ const Booking = () => {
 
   const slots = useMemo(() => barber ? buildSlots(barber.work_start, barber.work_end) : [], [barber]);
 
-  const isSlotTaken = (h: number, m: number) => {
+  const isSlotTaken = (h: number, m: number, currentTaken = taken) => {
     if (!date || !service) return false;
     const slot = new Date(date); slot.setHours(h, m, 0, 0);
     const slotEnd = addMinutes(slot, service.duration_minutes);
-    return taken.some(t => {
+    return currentTaken.some(t => {
       const s = new Date(t.scheduled_at);
       const e = addMinutes(s, t.duration_minutes);
       return slot < e && slotEnd > s;
     });
+  };
+
+  const selectTime = async (h: number, m: number) => {
+    if (!date) return;
+    const latestTaken = await fetchTakenSlots(date);
+    if (isSlotTaken(h, m, latestTaken)) {
+      setTime(null);
+      toast.warning("Este horário acabou de ser preenchido, por favor escolha outro");
+      return;
+    }
+    setTime({ h, m });
   };
 
   const isPast = (h: number, m: number) => {
@@ -153,6 +169,15 @@ const Booking = () => {
     if (Object.keys(newErrors).length > 0) return;
 
     setSubmitting(true);
+    const latestTaken = await fetchTakenSlots(date);
+    if (isSlotTaken(time.h, time.m, latestTaken)) {
+      setSubmitting(false);
+      setTime(null);
+      toast.warning("Este horário acabou de ser preenchido, por favor escolha outro");
+      setStep(2);
+      return;
+    }
+
     const scheduled = new Date(date);
     scheduled.setHours(time.h, time.m, 0, 0);
     const appointmentId = crypto.randomUUID();
@@ -168,7 +193,15 @@ const Booking = () => {
       status: "pending",
     });
     setSubmitting(false);
-    if (error) return toast.error(error.message || "Erro ao agendar");
+    if (error) {
+      if (error.code === "23505" || error.message?.toLowerCase().includes("duplicate")) {
+        await fetchTakenSlots(date);
+        setTime(null);
+        setStep(2);
+        return toast.warning("Este horário acabou de ser preenchido, por favor escolha outro");
+      }
+      return toast.error(error.message || "Erro ao agendar");
+    }
     setPendingApptId(appointmentId);
   };
 
