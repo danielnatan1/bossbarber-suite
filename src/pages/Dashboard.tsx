@@ -270,13 +270,49 @@ const Dashboard = () => {
           </TabsList>
 
           <TabsContent value="agenda" className="mt-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+              <div>
+                <p className="text-xs uppercase tracking-widest text-gold mb-1">Filtrar por dia</p>
+                <p className="font-display text-xl">
+                  {isToday ? "Hoje" : format(selectedDate, "EEEE", { locale: ptBR })}
+                  <span className="text-muted-foreground text-base ml-2">
+                    {format(selectedDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                  </span>
+                </p>
+              </div>
+              <div className="flex gap-2">
+                {!isToday && (
+                  <Button variant="outline" size="sm" onClick={() => setSelectedDate(startOfDay(new Date()))}>
+                    Hoje
+                  </Button>
+                )}
+                <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="gold" size="sm">
+                      <CalendarDays className="h-4 w-4" />
+                      {format(selectedDate, "dd/MM/yyyy")}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="end">
+                    <Calendar
+                      mode="single"
+                      selected={selectedDate}
+                      onSelect={(d) => { if (d) { setSelectedDate(startOfDay(d)); setDatePickerOpen(false); } }}
+                      initialFocus
+                      locale={ptBR}
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
             <div className="space-y-3">
-              {appts.length === 0 && (
+              {dayAppts.length === 0 && (
                 <div className="rounded-2xl border border-border bg-card p-8 text-center text-muted-foreground">
-                  Nenhum agendamento ainda. Compartilhe seu link!
+                  Nenhum agendamento {isToday ? "para hoje" : `para ${format(selectedDate, "dd/MM")}`}.
                 </div>
               )}
-              {appts.map(a => {
+              {dayAppts.map(a => {
                 const svc = services.find(s => s.id === a.service_id);
                 const isPending = a.status === "pending";
                 const ageMs = Date.now() - new Date((a as any).created_at || a.scheduled_at).getTime();
