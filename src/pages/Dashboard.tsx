@@ -74,6 +74,10 @@ const Dashboard = () => {
   const [waPhone, setWaPhone] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
 
+  // Agenda date filter
+  const [selectedDate, setSelectedDate] = useState<Date>(() => startOfDay(new Date()));
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
+
   useEffect(() => {
     if (!user) return;
     (async () => {
