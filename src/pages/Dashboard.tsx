@@ -8,9 +8,11 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { toast } from "sonner";
-import { Scissors, LogOut, Plus, Pencil, Trash2, DollarSign, Users, Calendar as CalIcon, Copy, ExternalLink, Clock, MessageCircle, AlertCircle } from "lucide-react";
-import { format } from "date-fns";
+import { Scissors, LogOut, Plus, Pencil, Trash2, DollarSign, Users, Calendar as CalIcon, Copy, ExternalLink, Clock, MessageCircle, AlertCircle, CalendarDays } from "lucide-react";
+import { format, isSameDay, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 
@@ -72,6 +74,10 @@ const Dashboard = () => {
   const [waPhone, setWaPhone] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
 
+  // Agenda date filter
+  const [selectedDate, setSelectedDate] = useState<Date>(() => startOfDay(new Date()));
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
+
   useEffect(() => {
     if (!user) return;
     (async () => {
@@ -115,11 +121,13 @@ const Dashboard = () => {
   if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Carregando...</div>;
   if (!user) return <Navigate to="/auth" replace />;
 
-  const today = new Date(); today.setHours(0,0,0,0);
-  const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate()+1);
-  const todayAppts = appts.filter(a => { const d = new Date(a.scheduled_at); return d >= today && d < tomorrow && !["cancelled","no_show"].includes(a.status); });
-  const revenue = todayAppts.filter(a => a.status === "completed").reduce((s, a) => s + Number(a.price), 0);
-  const uniqueClients = new Set(todayAppts.map(a => a.client_phone)).size;
+  const dayAppts = appts.filter(a => isSameDay(new Date(a.scheduled_at), selectedDate));
+  const completedDayAppts = dayAppts.filter(a => a.status === "completed");
+  const revenue = completedDayAppts.reduce((s, a) => s + Number(a.price), 0);
+  const cutsCount = completedDayAppts.length;
+  const uniqueClients = new Set(completedDayAppts.map(a => a.client_phone)).size;
+  const isToday = isSameDay(selectedDate, new Date());
+  const dayLabel = isToday ? "hoje" : format(selectedDate, "dd/MM", { locale: ptBR });
 
   const openNew = () => { setEditing(null); setForm({ name: "", price: "", duration_minutes: "30" }); setOpen(true); };
   const openEdit = (s: Service) => { setEditing(s); setForm({ name: s.name, price: String(s.price), duration_minutes: String(s.duration_minutes) }); setOpen(true); };
@@ -240,16 +248,16 @@ const Dashboard = () => {
 
         <div className="grid sm:grid-cols-3 gap-4">
           {[
-            { icon: DollarSign, label: "Faturamento hoje (concluídos)", value: `R$ ${revenue.toFixed(2)}` },
-            { icon: CalIcon, label: "Cortes hoje", value: todayAppts.length },
+            { icon: DollarSign, label: `Faturamento ${dayLabel} (concluídos)`, value: `R$ ${revenue.toFixed(2)}` },
+            { icon: CalIcon, label: `Cortes ${dayLabel} (concluídos)`, value: cutsCount },
             { icon: Users, label: "Clientes únicos", value: uniqueClients },
           ].map((s, i) => (
-            <div key={i} className="p-6 rounded-2xl border border-border bg-card">
+            <div key={i} className="p-6 rounded-2xl border border-border bg-card transition-all duration-300">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs uppercase tracking-widest text-muted-foreground">{s.label}</span>
                 <s.icon className="h-4 w-4 text-gold" />
               </div>
-              <p className="font-display text-3xl text-gradient-gold">{s.value}</p>
+              <p className="font-display text-3xl text-gradient-gold transition-all duration-300">{s.value}</p>
             </div>
           ))}
         </div>
@@ -262,13 +270,49 @@ const Dashboard = () => {
           </TabsList>
 
           <TabsContent value="agenda" className="mt-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+              <div>
+                <p className="text-xs uppercase tracking-widest text-gold mb-1">Filtrar por dia</p>
+                <p className="font-display text-xl">
+                  {isToday ? "Hoje" : format(selectedDate, "EEEE", { locale: ptBR })}
+                  <span className="text-muted-foreground text-base ml-2">
+                    {format(selectedDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                  </span>
+                </p>
+              </div>
+              <div className="flex gap-2">
+                {!isToday && (
+                  <Button variant="outline" size="sm" onClick={() => setSelectedDate(startOfDay(new Date()))}>
+                    Hoje
+                  </Button>
+                )}
+                <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="gold" size="sm">
+                      <CalendarDays className="h-4 w-4" />
+                      {format(selectedDate, "dd/MM/yyyy")}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="end">
+                    <Calendar
+                      mode="single"
+                      selected={selectedDate}
+                      onSelect={(d) => { if (d) { setSelectedDate(startOfDay(d)); setDatePickerOpen(false); } }}
+                      initialFocus
+                      locale={ptBR}
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
             <div className="space-y-3">
-              {appts.length === 0 && (
+              {dayAppts.length === 0 && (
                 <div className="rounded-2xl border border-border bg-card p-8 text-center text-muted-foreground">
-                  Nenhum agendamento ainda. Compartilhe seu link!
+                  Nenhum agendamento {isToday ? "para hoje" : `para ${format(selectedDate, "dd/MM")}`}.
                 </div>
               )}
-              {appts.map(a => {
+              {dayAppts.map(a => {
                 const svc = services.find(s => s.id === a.service_id);
                 const isPending = a.status === "pending";
                 const ageMs = Date.now() - new Date((a as any).created_at || a.scheduled_at).getTime();
