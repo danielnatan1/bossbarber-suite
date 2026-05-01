@@ -395,7 +395,7 @@ const Booking = () => {
               <Calendar
                 mode="single"
                 selected={date}
-                onSelect={(d) => { setDate(d); setTime(null); }}
+                onSelect={(d) => { setDate(d); setTime(null); fetchTakenSlots(d); }}
                 disabled={(d) => {
                   const today = new Date(); today.setHours(0,0,0,0);
                   if (d < today) return true;
@@ -417,7 +417,7 @@ const Booking = () => {
                       <button
                         key={`${h}-${m}`}
                         disabled={disabled}
-                        onClick={() => setTime({ h, m })}
+                        onClick={() => selectTime(h, m)}
                         className={cn(
                           "py-2 rounded-lg border text-sm font-medium transition-all",
                           disabled && "opacity-30 cursor-not-allowed line-through border-border",
