@@ -72,11 +72,30 @@ const Booking = () => {
 
   useEffect(() => {
     if (!barber || !date) return;
-    (async () => {
-      const day = format(date, "yyyy-MM-dd");
+    const day = format(date, "yyyy-MM-dd");
+    const fetchTaken = async () => {
       const { data } = await supabase.rpc("get_taken_slots", { _barber_id: barber.id, _day: day });
       setTaken(data || []);
-    })();
+    };
+    fetchTaken();
+
+    // Realtime: any change to appointments for this barber refreshes taken slots
+    const channel = supabase
+      .channel(`appts-${barber.id}-${day}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "appointments", filter: `barber_id=eq.${barber.id}` },
+        () => fetchTaken()
+      )
+      .subscribe();
+
+    // Safety net: refetch every 15s in case realtime is unavailable
+    const interval = setInterval(fetchTaken, 15000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(interval);
+    };
   }, [barber, date]);
 
   // Countdown 10 minutes after creating the pending appointment
