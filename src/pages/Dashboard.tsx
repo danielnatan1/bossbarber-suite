@@ -121,11 +121,13 @@ const Dashboard = () => {
   if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Carregando...</div>;
   if (!user) return <Navigate to="/auth" replace />;
 
-  const today = new Date(); today.setHours(0,0,0,0);
-  const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate()+1);
-  const todayAppts = appts.filter(a => { const d = new Date(a.scheduled_at); return d >= today && d < tomorrow && !["cancelled","no_show"].includes(a.status); });
-  const revenue = todayAppts.filter(a => a.status === "completed").reduce((s, a) => s + Number(a.price), 0);
-  const uniqueClients = new Set(todayAppts.map(a => a.client_phone)).size;
+  const dayAppts = appts.filter(a => isSameDay(new Date(a.scheduled_at), selectedDate));
+  const completedDayAppts = dayAppts.filter(a => a.status === "completed");
+  const revenue = completedDayAppts.reduce((s, a) => s + Number(a.price), 0);
+  const cutsCount = completedDayAppts.length;
+  const uniqueClients = new Set(completedDayAppts.map(a => a.client_phone)).size;
+  const isToday = isSameDay(selectedDate, new Date());
+  const dayLabel = isToday ? "hoje" : format(selectedDate, "dd/MM", { locale: ptBR });
 
   const openNew = () => { setEditing(null); setForm({ name: "", price: "", duration_minutes: "30" }); setOpen(true); };
   const openEdit = (s: Service) => { setEditing(s); setForm({ name: s.name, price: String(s.price), duration_minutes: String(s.duration_minutes) }); setOpen(true); };
